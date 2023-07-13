@@ -2,23 +2,55 @@
 
 import zmq
 import sys
+import threading
 
 
-def server(target):
+target="CPU"
+Nstreams=16
+url_client="tcp://*:5555"
+
+
+# Global variables
+
+nt = { 'N': 'F', 'T': 'C', 'n': 'F', 't': 'C' }
+url_worker = "inproc://workers"
+
+def server():
+
+    # Prepare our context and sockets
+    context = zmq.Context(1)
+
+    # Socket to talk to clients
+    clients = context.socket(zmq.ROUTER)
+    clients.bind(url_client)
+
+    # Socket to talk to workers
+    workers = context.socket(zmq.DEALER)
+    workers.bind(url_worker)
+
+    # Launch pool of worker threads
+    for i in range(Nstreams):
+        thread = threading.Thread(target=worker_thread, args=(context, ))
+        thread.start()
+
+    zmq.device(zmq.QUEUE, clients, workers)
+
+    # We never get here but clean up anyhow
+    clients.close()
+    workers.close()
+    context.term()
+
+
+
+def worker_thread(context):
     import numpy as np
     if target == 'GPU':
         import cupy as cp
 
-    # Prepare our context and sockets
-    context = zmq.Context()
-
-    #  Socket to reply to client requests
+    # Socket to talk to dispatcher
     socket = context.socket(zmq.REP)
-#   socket.bind("ipc:///tmp/gemmizer_socket") # replace this with your socket address
-    socket.bind("tcp://*:5555")
 
-    # Handle transposes by setting Fortran or C format
-    nt = { 'N': 'F', 'T': 'C', 'n': 'F', 't': 'C' }
+    socket.connect(url_worker)
 
     while True:
         # Read the request
@@ -60,7 +92,7 @@ def server(target):
         if beta != 0.:
           C = np.frombuffer(message_parts[3], dtype=typ).reshape((m, n), order='F')
           B = np.frombuffer(message_parts[4], dtype=typ).reshape((k, n), order=nt[nt2])
-        else:  
+        else:
           B = np.frombuffer(message_parts[3], dtype=typ).reshape((k, n), order=nt[nt2])
 
         # Perform matrix multiplication
@@ -100,4 +132,4 @@ def server(target):
 
 
 if __name__ == "__main__":
-    server('CPU')
+    server()

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import unittest
 import zmq
 import numpy as np
@@ -7,7 +9,6 @@ class TestDgemmServer(unittest.TestCase):
         # Prepare our context and socket
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
-#        self.socket.connect("ipc:///tmp/gemmizer_socket")  # replace this with your socket address
         self.socket.connect("tcp://localhost:5555")
 
     def tearDown(self):
