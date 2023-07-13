@@ -1,10 +1,18 @@
-# gemmizer
+# Gemmizer
 Python script that performs GEMM on GPUs taking matrices from a zeromq socket
 
 ## Requirements
 
+### Python (server and client)
+
 - numpy
+- pyzmq
 - cupy, if GEMMs run on a GPU
+
+### Fortran (client)
+
+- libzmq
+- f77zmq
 
 
 ## How to run
@@ -26,5 +34,6 @@ python ./test.py
 3. Kill the GEMM server
 
 ```bash
-fg ; [Ctrl]-C
+fg
+[Ctrl]-C
 ```
