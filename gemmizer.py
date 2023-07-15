@@ -4,9 +4,12 @@ import zmq
 import sys
 import threading
 
-
-target="CPU"
+# Number of worker threads that will be started to handle incoming tasks.
 Nstreams=16
+
+# 'CPU' or 'GPU'
+target="CPU"
+
 url_client="tcp://*:5555"
 
 
@@ -16,6 +19,14 @@ nt = { 'N': 'F', 'T': 'C', 'n': 'F', 't': 'C' }
 url_worker = "inproc://workers"
 
 def server():
+    """
+This function sets up the ZeroMQ context and two types of sockets: a
+ROUTER socket for communicating with clients, and a DEALER socket for
+communicating with worker threads. After setting up these sockets and binding
+them to appropriate endpoints, it starts the worker threads and then starts a
+built-in ZeroMQ device that bridges the clients and workers sockets,
+facilitating the passing of messages between them.
+   """
 
     # Prepare our context and sockets
     context = zmq.Context(1)
@@ -43,6 +54,23 @@ def server():
 
 
 def worker_thread(context):
+    """
+Each worker thread runs this function. It sets up a REP socket connected to the
+DEALER socket in the main thread. It then enters a loop where it waits for a
+request from a client. These requests are expected to be commands to perform a
+matrix multiplication operation with certain parameters.
+
+The worker supports two types of multiplication, 'dgemm' and 'sgemm', for
+double-precision and single-precision matrices, respectively. It also responds
+to an 'exit' command, which will make it stop processing requests and
+terminate.
+
+For a multiplication request, the worker reads matrix dimensions and other
+parameters, loads matrices from received byte strings, performs the requested
+matrix multiplication operation, then sends the resulting matrix back to the
+client as a byte string.
+    """
+
     import numpy as np
     if target == 'GPU':
         import cupy as cp
